@@ -46,8 +46,9 @@ jobs:
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
-          key:
-       
+          key: ${{ secrets.EC2_KEY }}
+          source: "${{ inputs.build-folder }}/*"
+          target: "/home/ubuntu/react-deploy"
 
       # 6. Deploy on EC2
       - name: Deploy to Nginx

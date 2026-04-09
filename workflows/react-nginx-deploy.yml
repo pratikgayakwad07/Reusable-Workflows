@@ -1,0 +1,63 @@
+name: React Reusable CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+      build-folder:
+        required: false
+        default: build
+        type: string
+
+    secrets:
+      EC2_HOST:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Build React App
+      - name: Build app
+        run: npm run build
+
+      # 5. Copy build files to EC2
+      - name: Copy build files to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          source: "${{ inputs.build-folder }}/*"
+          target: "/home/ubuntu/react-deploy"
+
+      # 6. Deploy on EC2
+      - name: Deploy to Nginx
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            sudo rm -rf /var/www/html/*
+            sudo cp -r /home/ubuntu/react-deploy/${{ inputs.build-folder }}/* /var/www/html/
+            sudo systemctl restart nginx
